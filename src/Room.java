@@ -5,6 +5,7 @@ public class Room {
 	private final String room_no;
 	private final String building;
 	private final int capacity;
+	private boolean isBooked;
 	private final List<String> equipment;
 
 	public Room(int id, String room_no, String building, int capacity, List<String> equipment) {
@@ -36,7 +37,7 @@ public class Room {
 	}
 
 	public boolean canBook(int requiredCapacity, List<String> requiredEquipment) {
-		return this.capacity >= requiredCapacity && this.equipment.containsAll(requiredEquipment);
+		return this.capacity >= requiredCapacity && this.equipment.containsAll(requiredEquipment) && !this.isBooked;
 	}
 
 	@Override
