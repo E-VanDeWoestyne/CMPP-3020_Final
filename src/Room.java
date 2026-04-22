@@ -1,3 +1,4 @@
+import exceptions.InvalidDataException;
 import java.util.List;
 
 public class Room {
@@ -9,13 +10,25 @@ public class Room {
 	private final List<String> equipment;
 
 	public Room(int id, String room_no, String building, int capacity, List<String> equipment) throws InvalidDataException {
+		if (id <= 0) {
+			throw new InvalidDataException("Room id must be greater than 0");
+		}
+		if (room_no == null || room_no.trim().isEmpty()) {
+			throw new InvalidDataException("Room number is required");
+		}
+		if (building == null || building.trim().isEmpty()) {
+			throw new InvalidDataException("Building is required");
+		}
+		if (capacity <= 0) {
+			throw new InvalidDataException("Capacity must be greater than 0");
+		}
+		if (equipment == null) {
+			throw new InvalidDataException("Room equipment list cannot be null");
+		}
+
 		this.id = id;
 		this.room_no = room_no;
 		this.building = building;
-		if(capacity <=0 )
-		{
-			throw new InvalidDataException("Capactiy can't be negative values or zero");
-		}
 		this.capacity = capacity;
 		this.equipment = equipment;
 	}

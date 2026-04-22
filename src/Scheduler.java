@@ -15,6 +15,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
+import exceptions.InvalidDataException;
+
 public class Scheduler {
     private final Map<Integer, Room> roomsById;
     private final Map<Integer, Event> eventsById;
@@ -107,7 +109,7 @@ public class Scheduler {
                 .collect(Collectors.toList());
     }
 
-    public Booking assign_room(Event event) {
+    public Booking assign_room(Event event) throws InvalidDataException {
         List<Room> availableRooms = find_available_room(event);
         if (availableRooms.isEmpty()) {
             throw new RuntimeException("No room matches event requirements");
@@ -130,7 +132,7 @@ public class Scheduler {
         return booking;
     }
 
-    public Booking assign_room(Event event, int selectedRoomId) {
+    public Booking assign_room(Event event, int selectedRoomId) throws InvalidDataException {
         validateEvent(event);
         eventsById.put(event.getId(), event);
 
