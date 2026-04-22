@@ -16,6 +16,7 @@ public class Room {
 		{
 			throw new InvalidDataException("Capactiy can't be negative values or zero");
 		}
+		this.capacity = capacity;
 		this.equipment = equipment;
 	}
 
