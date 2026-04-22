@@ -15,7 +15,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
+import exceptions.CapacityExceededException;
+import exceptions.EquipmentMissingException;
 import exceptions.InvalidDataException;
+import exceptions.RoomUnavailableException;
 
 public class Scheduler {
     private final Map<Integer, Room> roomsById;
@@ -55,18 +58,18 @@ public class Scheduler {
         }
     }
 
-    public boolean validateEvent(Event event) {
+    public boolean validateEvent(Event event) throws InvalidDataException {
         if (event == null) {
-            throw new RuntimeException("Invalid event: event is null");
+            throw new InvalidDataException("event is null");
         }
 
         if (isBlank(event.getClubName()) || isBlank(event.getEventName()) || isBlank(event.getEventDate())
                 || isBlank(event.getEventStarttime()) || isBlank(event.getEventEndtime())) {
-            throw new RuntimeException("Invalid event: required text fields are missing");
+            throw new InvalidDataException("required text fields are missing");
         }
 
         if (event.getAttendees() <= 0) {
-            throw new RuntimeException("Invalid event: attendees must be greater than 0");
+            throw new InvalidDataException("attendees must be greater than 0");
         }
 
         LocalDate date = parseDate(event.getEventDate());
@@ -74,7 +77,7 @@ public class Scheduler {
         LocalTime end = parseTime(event.getEventEndtime());
 
         if (!start.isBefore(end)) {
-            throw new RuntimeException("Invalid event: start time must be before end time");
+            throw new InvalidDataException("start time must be before end time");
         }
 
         validateBookingWindow(date, start, end);
@@ -83,7 +86,7 @@ public class Scheduler {
         return true;
     }
 
-    public List<Room> find_available_room(Event event) {
+    public List<Room> find_available_room(Event event) throws InvalidDataException {
         validateEvent(event);
 
         LocalDate eventDate = parseDate(event.getEventDate());
@@ -109,73 +112,57 @@ public class Scheduler {
                 .collect(Collectors.toList());
     }
 
-    public Booking assign_room(Event event) throws InvalidDataException {
+    public Booking assign_room(Event event) throws InvalidDataException, RoomUnavailableException,
+            CapacityExceededException, EquipmentMissingException {
         List<Room> availableRooms = find_available_room(event);
         if (availableRooms.isEmpty()) {
-            throw new RuntimeException("No room matches event requirements");
+            throw new RoomUnavailableException("No room matches event requirements for: " + event.getEventName());
         }
 
         // Auto-pick smallest suitable room by sorted result from find_available_room.
         Room selectedRoom = availableRooms.get(0);
-        eventsById.put(event.getId(), event);
+        validateRoomRequirements(selectedRoom, event);
 
-        LocalDateTime now = LocalDateTime.now();
-        Booking booking = new Booking(
-                nextBookingId++,
-                selectedRoom.getId(),
-                event.getId(),
-                now,
-                now,
-                Booking.Status.CONFIRMED);
+        LocalDate eventDate = parseDate(event.getEventDate());
+        LocalTime eventStart = parseTime(event.getEventStarttime());
+        LocalTime eventEnd = parseTime(event.getEventEndtime());
+        if (hasConflict(selectedRoom.getId(), eventDate, eventStart, eventEnd)) {
+            throw new RoomUnavailableException("Selected room conflicts with an existing booking");
+        }
 
-        bookingsById.put(booking.getId(), booking);
-        selectedRoom.book();
-        return booking;
+        return createConfirmedBooking(event, selectedRoom);
     }
 
-    public Booking assign_room(Event event, int selectedRoomId) throws InvalidDataException {
+    public Booking assign_room(Event event, int selectedRoomId) throws InvalidDataException,
+            CapacityExceededException, EquipmentMissingException, RoomUnavailableException {
         validateEvent(event);
-        eventsById.put(event.getId(), event);
 
         Room selectedRoom = roomsById.get(selectedRoomId);
         if (selectedRoom == null) {
-            throw new RuntimeException("Selected room not found: " + selectedRoomId);
+            throw new RoomUnavailableException("Selected room not found: " + selectedRoomId);
         }
 
         LocalDate eventDate = parseDate(event.getEventDate());
         LocalTime eventStart = parseTime(event.getEventStarttime());
         LocalTime eventEnd = parseTime(event.getEventEndtime());
 
-        if (!selectedRoom.canBook(event.getAttendees(), event.getRequiredEquipment())) {
-            throw new RuntimeException("Selected room does not satisfy event capacity/equipment requirements");
-        }
+        validateRoomRequirements(selectedRoom, event);
 
         if (hasConflict(selectedRoom.getId(), eventDate, eventStart, eventEnd)) {
-            throw new RuntimeException("Selected room conflicts with an existing booking");
+            throw new RoomUnavailableException("Selected room conflicts with an existing booking");
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        Booking booking = new Booking(
-                nextBookingId++,
-                selectedRoom.getId(),
-                event.getId(),
-                now,
-                now,
-                Booking.Status.CONFIRMED);
-
-        bookingsById.put(booking.getId(), booking);
-        selectedRoom.book();
-        return booking;
+        return createConfirmedBooking(event, selectedRoom);
     }
 
-    public Booking manage_booking(int bookingId, String action) {
+    public Booking manage_booking(int bookingId, String action) throws InvalidDataException {
         Booking booking = bookingsById.get(bookingId);
         if (booking == null) {
-            throw new RuntimeException("Booking not found: " + bookingId);
+            throw new InvalidDataException("booking not found: " + bookingId);
         }
 
         if (isBlank(action)) {
-            throw new RuntimeException("Action is required for manage_booking");
+            throw new InvalidDataException("action is required for manage_booking");
         }
 
         String normalizedAction = action.trim().toLowerCase();
@@ -194,7 +181,7 @@ public class Scheduler {
             return booking;
         }
 
-        throw new RuntimeException("Unsupported action: " + action + ". Use 'update' or 'cancel'.");
+        throw new InvalidDataException("unsupported action: " + action + ". Use 'update' or 'cancel'.");
     }
 
     public List<Booking> get_schedule() {
@@ -203,14 +190,14 @@ public class Scheduler {
         return Collections.unmodifiableList(allBookings);
     }
 
-    private void validateClubVerification(Event event) {
+    private void validateClubVerification(Event event) throws InvalidDataException {
         String normalizedClubName = event.getClubName().trim().toLowerCase();
         if (!verifiedClubs.contains(normalizedClubName)) {
-            throw new RuntimeException("Club is not verified: " + event.getClubName());
+            throw new InvalidDataException("club is not verified: " + event.getClubName());
         }
     }
 
-    private void validateBookingWindow(LocalDate date, LocalTime start, LocalTime end) {
+    private void validateBookingWindow(LocalDate date, LocalTime start, LocalTime end) throws InvalidDataException {
         DayOfWeek day = date.getDayOfWeek();
 
         LocalTime allowedStart = LocalTime.of(8, 0);
@@ -223,8 +210,8 @@ public class Scheduler {
         }
 
         if (start.isBefore(allowedStart) || end.isAfter(allowedEnd)) {
-            throw new RuntimeException(
-                    "Booking outside allowed hours. Allowed window: " + allowedStart + " to " + allowedEnd);
+            throw new InvalidDataException(
+                    "booking outside allowed hours. Allowed window: " + allowedStart + " to " + allowedEnd);
         }
     }
 
@@ -243,16 +230,21 @@ public class Scheduler {
                 continue;
             }
 
-            LocalDate bookedDate = parseDate(bookedEvent.getEventDate());
-            if (!bookedDate.equals(eventDate)) {
-                continue;
-            }
+            try {
+                LocalDate bookedDate = parseDate(bookedEvent.getEventDate());
+                if (!bookedDate.equals(eventDate)) {
+                    continue;
+                }
 
-            LocalTime bookedStart = parseTime(bookedEvent.getEventStarttime());
-            LocalTime bookedEnd = parseTime(bookedEvent.getEventEndtime());
+                LocalTime bookedStart = parseTime(bookedEvent.getEventStarttime());
+                LocalTime bookedEnd = parseTime(bookedEvent.getEventEndtime());
 
-            boolean overlaps = eventStart.isBefore(bookedEnd) && eventEnd.isAfter(bookedStart);
-            if (overlaps) {
+                boolean overlaps = eventStart.isBefore(bookedEnd) && eventEnd.isAfter(bookedStart);
+                if (overlaps) {
+                    return true;
+                }
+            } catch (InvalidDataException ignored) {
+                // Invalid existing booking data is treated as conflicting for safety.
                 return true;
             }
         }
@@ -260,7 +252,7 @@ public class Scheduler {
         return false;
     }
 
-    private LocalDate parseDate(String dateText) {
+    private LocalDate parseDate(String dateText) throws InvalidDataException {
         DateTimeFormatter[] dateFormats = new DateTimeFormatter[] {
                 DateTimeFormatter.ofPattern("yyyy-MM-dd"),
                 DateTimeFormatter.ofPattern("MM/dd/yyyy")
@@ -273,10 +265,10 @@ public class Scheduler {
             }
         }
 
-        throw new RuntimeException("Invalid date format: " + dateText + ". Use yyyy-MM-dd or MM/dd/yyyy.");
+        throw new InvalidDataException("invalid date format: " + dateText + ". Use yyyy-MM-dd or MM/dd/yyyy.");
     }
 
-    private LocalTime parseTime(String timeText) {
+    private LocalTime parseTime(String timeText) throws InvalidDataException {
         DateTimeFormatter[] timeFormats = new DateTimeFormatter[] {
                 DateTimeFormatter.ofPattern("H:mm"),
                 DateTimeFormatter.ofPattern("HH:mm"),
@@ -293,7 +285,46 @@ public class Scheduler {
             }
         }
 
-        throw new RuntimeException("Invalid time format: " + timeText + ". Examples: 14:30 or 2:30 PM.");
+        throw new InvalidDataException("invalid time format: " + timeText + ". Examples: 14:30 or 2:30 PM.");
+    }
+
+    private void validateRoomRequirements(Room room, Event event)
+            throws CapacityExceededException, EquipmentMissingException {
+        if (room.getCapacity() < event.getAttendees()) {
+            throw new CapacityExceededException(
+                    room.getRoomNo(),
+                    room.getCapacity(),
+                    event.getEventName(),
+                    event.getAttendees());
+        }
+
+        List<String> missingEquipment = new ArrayList<>();
+        for (String requiredItem : event.getRequiredEquipment()) {
+            if (!room.getEquipment().contains(requiredItem)) {
+                missingEquipment.add(requiredItem);
+            }
+        }
+
+        if (!missingEquipment.isEmpty()) {
+            throw new EquipmentMissingException(room.getRoomNo(), missingEquipment);
+        }
+    }
+
+    private Booking createConfirmedBooking(Event event, Room room) throws InvalidDataException {
+        eventsById.put(event.getId(), event);
+
+        LocalDateTime now = LocalDateTime.now();
+        Booking booking = new Booking(
+                nextBookingId++,
+                room.getId(),
+                event.getId(),
+                now,
+                now,
+                Booking.Status.CONFIRMED);
+
+        bookingsById.put(booking.getId(), booking);
+        room.book();
+        return booking;
     }
 
     private boolean isBlank(String value) {
