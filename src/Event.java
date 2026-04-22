@@ -10,7 +10,7 @@ public class Event {
 	private final int attendees;
 	private final String description;
 	private final List<String> requiredEquipment;
-	private final String status = "Pending";
+	private String status = "Pending";
 
 	public Event(int id, String club_name, String event_name, String event_date, String event_starttime, String event_endtime, int attendees, String description, List<String> requiredEquipment) {
 		this.id = id;
