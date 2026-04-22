@@ -129,6 +129,7 @@ public class Scheduler {
                 Booking.Status.CONFIRMED);
 
         bookingsById.put(booking.getId(), booking);
+        selectedRoom.book();
         return booking;
     }
 
@@ -163,6 +164,7 @@ public class Scheduler {
                 Booking.Status.CONFIRMED);
 
         bookingsById.put(booking.getId(), booking);
+        selectedRoom.book();
         return booking;
     }
 
@@ -180,6 +182,10 @@ public class Scheduler {
         if ("cancel".equals(normalizedAction)) {
             booking.setStatus(Booking.Status.CANCELLED);
             booking.setUpdatedAt(LocalDateTime.now());
+            Room room = roomsById.get(booking.getRoomId());
+            if (room != null) {
+                room.unbook();
+            }
             return booking;
         }
 
