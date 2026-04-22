@@ -44,6 +44,14 @@ public class Room {
 		return this.capacity >= requiredCapacity && this.equipment.containsAll(requiredEquipment) && !this.isBooked;
 	}
 
+	public void book() {
+		this.isBooked = true;
+	}
+
+	public void unbook() {
+		this.isBooked = false;
+	}
+
 	@Override
 	public String toString() {
 		return "Room{" +
