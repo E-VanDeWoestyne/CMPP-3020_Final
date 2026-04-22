@@ -3,12 +3,14 @@ import java.util.List;
 public class Room {
 	private final int id;
 	private final String room_no;
+	private final String building;
 	private final int capacity;
 	private final List<String> equipment;
 
-	public Room(int id, String room_no, int capacity, List<String> equipment) {
+	public Room(int id, String room_no, String building, int capacity, List<String> equipment) {
 		this.id = id;
 		this.room_no = room_no;
+		this.building = building;
 		this.capacity = capacity;
 		this.equipment = equipment;
 	}
@@ -19,6 +21,10 @@ public class Room {
 
 	public String getRoomNo() {
 		return room_no;
+	}
+
+	public String getBuilding() {
+		return building;
 	}
 
 	public int getCapacity() {
