@@ -1,18 +1,24 @@
 import java.util.List;
 
 public class Room {
-	private final String id;
+	private final int id;
+	private final String room_no;
 	private final int capacity;
 	private final List<String> equipment;
 
-	public Room(String id, int capacity, List<String> equipment) {
+	public Room(int id, String room_no, int capacity, List<String> equipment) {
 		this.id = id;
+		this.room_no = room_no;
 		this.capacity = capacity;
 		this.equipment = equipment;
 	}
 
-	public String getId() {
+	public int getId() {
 		return id;
+	}
+
+	public String getRoomNo() {
+		return room_no;
 	}
 
 	public int getCapacity() {
@@ -21,6 +27,10 @@ public class Room {
 
 	public List<String> getEquipment() {
 		return equipment;
+	}
+
+	public boolean canBook(int requiredCapacity, List<String> requiredEquipment) {
+		return this.capacity >= requiredCapacity && this.equipment.containsAll(requiredEquipment);
 	}
 
 	@Override
