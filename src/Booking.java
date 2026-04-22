@@ -1,3 +1,4 @@
+import exceptions.InvalidDataException;
 import java.time.LocalDateTime;
 
 public class Booking {
@@ -13,7 +14,27 @@ public class Booking {
         CANCELLED
     }
 
-    public Booking(int id, int roomId, int eventId, LocalDateTime createdAt, LocalDateTime updatedAt, Status status) {
+    public Booking(int id, int roomId, int eventId, LocalDateTime createdAt, LocalDateTime updatedAt, Status status)
+            throws InvalidDataException {
+        if (id <= 0) {
+            throw new InvalidDataException("Booking id must be greater than 0");
+        }
+        if (roomId <= 0) {
+            throw new InvalidDataException("Room id must be greater than 0");
+        }
+        if (eventId <= 0) {
+            throw new InvalidDataException("Event id must be greater than 0");
+        }
+        if (createdAt == null) {
+            throw new InvalidDataException("createdAt is required");
+        }
+        if (updatedAt == null) {
+            throw new InvalidDataException("updatedAt is required");
+        }
+        if (status == null) {
+            throw new InvalidDataException("Booking status is required");
+        }
+
         this.id = id;
         this.roomId = roomId;
         this.eventId = eventId;

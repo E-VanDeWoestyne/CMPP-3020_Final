@@ -1,3 +1,4 @@
+import exceptions.InvalidDataException;
 import java.util.List;
 
 public class Event {
@@ -12,7 +13,32 @@ public class Event {
 	private final List<String> requiredEquipment;
 	private String status = "Pending";
 
-	public Event(int id, String club_name, String event_name, String event_date, String event_starttime, String event_endtime, int attendees, String description, List<String> requiredEquipment) {
+	public Event(int id, String club_name, String event_name, String event_date, String event_starttime, String event_endtime, int attendees, String description, List<String> requiredEquipment) throws InvalidDataException {
+		if (id <= 0) {
+			throw new InvalidDataException("Event id must be greater than 0");
+		}
+		if (club_name == null || club_name.trim().isEmpty()) {
+			throw new InvalidDataException("Club name is required");
+		}
+		if (event_name == null || event_name.trim().isEmpty()) {
+			throw new InvalidDataException("Event name is required");
+		}
+		if (event_date == null || event_date.trim().isEmpty()) {
+			throw new InvalidDataException("Event date is required");
+		}
+		if (event_starttime == null || event_starttime.trim().isEmpty()) {
+			throw new InvalidDataException("Event start time is required");
+		}
+		if (event_endtime == null || event_endtime.trim().isEmpty()) {
+			throw new InvalidDataException("Event end time is required");
+		}
+		if (attendees <= 0) {
+			throw new InvalidDataException("Attendees must be greater than 0");
+		}
+		if (requiredEquipment == null) {
+			throw new InvalidDataException("Required equipment list cannot be null");
+		}
+
 		this.id = id;
 		this.club_name = club_name;
 		this.event_name = event_name;
