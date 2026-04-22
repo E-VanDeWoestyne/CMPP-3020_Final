@@ -8,11 +8,14 @@ public class Room {
 	private boolean isBooked;
 	private final List<String> equipment;
 
-	public Room(int id, String room_no, String building, int capacity, List<String> equipment) {
+	public Room(int id, String room_no, String building, int capacity, List<String> equipment) throws InvalidDataException {
 		this.id = id;
 		this.room_no = room_no;
 		this.building = building;
-		this.capacity = capacity;
+		if(capacity <=0 )
+		{
+			throw new InvalidDataException("Capactiy can't be negative values or zero");
+		}
 		this.equipment = equipment;
 	}
 
